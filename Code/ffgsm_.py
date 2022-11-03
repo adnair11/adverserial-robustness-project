@@ -39,7 +39,7 @@ class FFGSM_(Attack):
         images_transf = self.transf(images).clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
 
-        if self._targeted:
+        if self.targeted:
             target_labels = self._get_target_label(images_transf, labels)
 
         loss = nn.CrossEntropyLoss()
@@ -51,7 +51,7 @@ class FFGSM_(Attack):
         outputs = self.model(adv_images)
 
         # Calculate loss
-        if self._targeted:
+        if self.targeted:
             cost = -loss(outputs, target_labels)
         else:
             cost = loss(outputs, labels)

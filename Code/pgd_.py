@@ -25,7 +25,7 @@ class PGD_(Attack):
         >>> adv_images = attack(images, labels)
     """
     def __init__(self, model, transf=None, eps=0.3,
-                 alpha=2/255, steps=40, random_start=True):
+                 alpha=2/255, steps=20, random_start=True):
         if transf is None:
             self.transf = rt.Identity()
         else:
@@ -44,7 +44,7 @@ class PGD_(Attack):
         images_transf = self.transf(images).clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
 
-        if self._targeted:
+        if self.targeted:
             target_labels = self._get_target_label(images_transf, labels)
 
         loss = nn.CrossEntropyLoss()
@@ -54,15 +54,17 @@ class PGD_(Attack):
         if self.random_start:
             # Starting at a uniformly random point
             delta = torch.empty_like(adv_images_transf).uniform_(-self.eps, self.eps)
-            adv_images_transf = (adv_images_transf + delta).detach()
+            adv_images_transf = (adv_images_transf + delta)
+            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images_transf = self.transf(adv_images).detach()
 
         for _ in range(self.steps):
             adv_images_transf.requires_grad = True
-            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images = self.transf.inv(adv_images_transf)
             outputs = self.model(adv_images)
         
             # Calculate loss
-            if self._targeted:
+            if self.targeted:
                 cost = -loss(outputs, target_labels)
             else:
                 cost = loss(outputs, labels)
@@ -84,7 +86,7 @@ class PGD_(Attack):
             else:
                 delta = torch.clamp(delta, min=-self.eps, max=self.eps)
             adv_images_transf = images_transf + delta
-            
-        adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1).detach()
+            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images_transf = self.transf(adv_images).detach()
 
-        return adv_images
+        return adv_images.detach()
