@@ -24,7 +24,7 @@ class PGDL2_(Attack):
         >>> attack = torchattacks.PGDL2(model, eps=1.0, alpha=0.2, steps=40, random_start=True)
         >>> adv_images = attack(images, labels)
     """
-    def __init__(self, model, transf=None, eps=1.0, alpha=0.2, steps=40,
+    def __init__(self, model, transf=None, eps=1.0, alpha=0.2, steps=20,
                  random_start=True, eps_for_division=1e-10):
         if transf is None:
             self.transf = rt.Identity()
@@ -45,7 +45,7 @@ class PGDL2_(Attack):
         images_transf = self.transf(images).clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
 
-        if self._targeted:
+        if self.targeted:
             target_labels = self._get_target_label(images_transf, labels)
 
         loss = nn.CrossEntropyLoss()
@@ -60,15 +60,17 @@ class PGDL2_(Attack):
             n = d_flat.norm(p=2,dim=1).view(adv_images_transf.size(0),1,1,1)
             r = torch.zeros_like(n).uniform_(0, 1)
             delta *= r/n*self.eps
-            adv_images_transf = (adv_images_transf + delta).detach()
+            adv_images_transf = (adv_images_transf + delta)
+            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images_transf = self.transf(adv_images).detach()
 
         for _ in range(self.steps):
             adv_images_transf.requires_grad = True
-            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images = self.transf.inv(adv_images_transf)
             outputs = self.model(adv_images)
 
             # Calculate loss
-            if self._targeted:
+            if self.targeted:
                 cost = -loss(outputs, target_labels)
             else:
                 cost = loss(outputs, labels)
@@ -76,16 +78,28 @@ class PGDL2_(Attack):
             # Update adversarial images
             grad = torch.autograd.grad(cost, adv_images_transf,
                                        retain_graph=False, create_graph=False)[0]
-            grad_norms = torch.norm(grad.view(batch_size, -1), p=2, dim=1) + self.eps_for_division
-            grad = grad / grad_norms.view(batch_size, 1, 1, 1)
-            adv_images_dct = adv_images_transf.detach() + self.alpha*grad
+            if grad.dtype is torch.cfloat:
+                grad_norm = torch.sqrt((grad.real)**2 + (grad.imag)**2) + self.eps_for_division
+                grad = grad/grad_norm
+            else:
+                grad_norm = torch.norm(grad, p='fro', dim=[-2,-1], keepdim=True) + self.eps_for_division
+                grad = grad/grad_norm
+            adv_images_transf = adv_images_transf.detach() + self.alpha*grad
 
             delta = adv_images_transf - images_transf
-            delta_norms = torch.norm(delta.view(batch_size, -1), p=2, dim=1)
-            factor = self.eps / delta_norms
-            factor = torch.min(factor, torch.ones_like(delta_norms))
-            delta = delta * factor.view(-1, 1, 1, 1)
+            if delta.dtype is torch.cfloat:
+                delta_norm = torch.sqrt((delta.real)**2 + (delta.imag)**2) + self.eps_for_division
+                factor = self.eps/delta_norm
+                factor = torch.min(factor, torch.ones_like(delta_norm))
+                delta *= factor
+            else:
+                delta_norm = torch.norm(delta, p='fro', dim=[-2,-1], keepdim=True)
+                factor = self.eps/delta_norm
+                factor = torch.min(factor, torch.ones_like(delta_norm))
+                delta *= factor
 
             adv_images_transf = (images_transf + delta).detach()
+            adv_images = torch.clamp(self.transf.inv(adv_images_transf), min=0, max=1)
+            adv_images_transf = self.transf(adv_images).detach()
 
-        return torch.clamp(self.transf.inv(adv_images_dct), min=0, max=1)
+        return adv_images.detach()
