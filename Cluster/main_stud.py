@@ -469,11 +469,18 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
         print(f'Model average. Iter: {i+1}/{n_models}.')
             
     results = {}
+    avg_all =[]
     for (key, values) in iters_result.items():
         aux_array = np.array(values)
         mean = np.mean(aux_array)
         std = np.std(aux_array)
+        avg_all.append(mean)
         results[key] = str(round(mean, 2))+"+"+str(round(std, 2))
+    avg_all = np.array(avg_all)
+    mean_all = np.mean(avg_all)
+    std_all = np.std(avg_all)
+    results['AVG_ALL'] = str(round(mean_all, 2))+"+"+str(round(std_all, 2))
+    print("Avg of all attacks",sum(avg_all)/len(avg_all))
     
     return results
 
