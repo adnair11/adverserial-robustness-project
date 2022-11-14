@@ -2,6 +2,7 @@
 
 from typing import Tuple
 import math
+import numpy as np
 
 import torch
 from torch import Tensor
@@ -61,6 +62,42 @@ class JPEG():
     
     def inv(self, data):
         return batch_idct(data)
+
+
+
+#------LOG transformation ---------
+class LOG():
+
+    def __init__(self) :
+        self.name = "LOG"
+    
+    def __call__(self,data):
+        return log_transform(data)
+    
+    def inv(self, data):
+        return inv_log(data)
+
+
+
+
+
+
+#log transfromation functions  
+
+def log_transform(data):
+    c = 255 / np.log(2) 
+    log_image = c*torch.log(1+ data)
+    return log_image
+
+
+#inverse log
+
+def inv_log(data):
+    c = 255 / np.log(2) 
+    inv = torch.exp(data /c )-1
+    return inv
+
+
 
 
 

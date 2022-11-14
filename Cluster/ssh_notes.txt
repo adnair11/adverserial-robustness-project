@@ -13,8 +13,13 @@ rm: remove file or files given
 rm -r: remove recursively. Used to remove directories.
 echo "Hello world" > a-file.txt: create example file
 
+cluster commands:
+squeue -p STUD (to find job queue in stud partition)
+scancel -u YOUR_USER_NAME
+
 
 Download/Upload file:
 
 scp coello@master.ismll.de:/home/coello/files/a-file.txt C:/Users/omen1/Downloads
+
 scp C:/Users/omen1/Documents/Universidad/Master/Project/GitHub/Code/rep_transformations.py coello@master.ismll.de:/home/coello/conda/SRP_cluster
