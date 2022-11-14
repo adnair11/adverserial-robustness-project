@@ -54,14 +54,15 @@ class DCT():
 
 class JPEG():
     
-    def __init__(self):
+    def __init__(self, block_size=8):
         self.name = 'JPEG'
+        self.block_size = block_size
     
     def __call__(self, data):
-        return batch_dct(data)
+        return batch_dct(data, self.block_size)
     
     def inv(self, data):
-        return batch_idct(data)
+        return batch_idct(data, self.block_size)
 
 
 
