@@ -90,7 +90,7 @@ valid_loader = torch.utils.data.DataLoader(dataset=fashion_mnist_valid,
 id_transf = rt.Identity()
 fft_transf = rt.FFT()
 dct_transf = rt.DCT()
-jpeg_transf = rt.JPEG(block_size=7)
+jpeg_transf = rt.JPEG(block_size=8)
 
 list_transf = [id_transf, fft_transf, dct_transf, jpeg_transf]
 
@@ -107,6 +107,8 @@ def generate_model(weights=None, lr=0.001):
     model.fc = nn.Sequential(nn.Linear(2048, 256), 
                               nn.ReLU(), 
                               nn.Linear(256, 10))
+    
+    model.load_state_dict(torch.load("conda/SRP_cluster/model_weights"))
     
     #Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -323,7 +325,7 @@ def get_model_acc(model, test_loader, atks_list):
 
 #Define attacks_list generation
 
-def generate_atks(model_atk, eps=0.3, avoid_attack=-1):
+def generate_atks(model_atk, eps=0.3, eps2=2, avoid_attack=-1):
     
     atks_list = []
     atks_list.append(NO_ATTACK(model_atk))
@@ -348,16 +350,16 @@ def generate_atks(model_atk, eps=0.3, avoid_attack=-1):
     if avoid_attack != 2:
         atks_list.append(PGD_(model_atk, eps=eps))
         atks_list.append(PGD_(model_atk, eps=eps, transf=dct_transf))
-        atks_list.append(PGD_(model_atk, eps=eps, transf=dct_transf))
+        atks_list.append(PGD_(model_atk, eps=eps, transf=jpeg_transf))
         atks_list.append(PGD_(model_atk, eps=eps, transf=fft_transf))
     else:
         print("Not trainning on PGD")
     
     if avoid_attack != 3:
-        atks_list.append(PGDL2_(model_atk, eps=eps))
-        atks_list.append(PGDL2_(model_atk, eps=eps, transf=dct_transf))
-        atks_list.append(PGDL2_(model_atk, eps=eps, transf=dct_transf))
-        atks_list.append(PGDL2_(model_atk, eps=eps, transf=fft_transf))
+        atks_list.append(PGDL2_(model_atk, eps=eps2))
+        atks_list.append(PGDL2_(model_atk, eps=eps2, transf=dct_transf))
+        atks_list.append(PGDL2_(model_atk, eps=eps2, transf=jpeg_transf))
+        atks_list.append(PGDL2_(model_atk, eps=eps2, transf=fft_transf))
     else:
         print("Not trainning on PGDL2")
         
@@ -366,7 +368,7 @@ def generate_atks(model_atk, eps=0.3, avoid_attack=-1):
 
 #Define attacks_list generation
 
-def generate_atks_test(model_atk, eps=0.3):
+def generate_atks_test(model_atk, eps=0.3, eps2=2):
     
     atks_list = []
     atks_list.append(NO_ATTACK(model_atk))
@@ -387,10 +389,10 @@ def generate_atks_test(model_atk, eps=0.3):
     atks_list.append(PGD_(model_atk, eps=eps, transf=jpeg_transf))
     atks_list.append(PGD_(model_atk, eps=eps, transf=fft_transf))
     
-    atks_list.append(PGDL2_(model_atk, eps=eps))
-    atks_list.append(PGDL2_(model_atk, eps=eps, transf=dct_transf))
-    atks_list.append(PGDL2_(model_atk, eps=eps, transf=dct_transf))
-    atks_list.append(PGDL2_(model_atk, eps=eps, transf=fft_transf))
+    atks_list.append(PGDL2_(model_atk, eps=eps2))
+    atks_list.append(PGDL2_(model_atk, eps=eps2, transf=dct_transf))
+    atks_list.append(PGDL2_(model_atk, eps=eps2, transf=jpeg_transf))
+    atks_list.append(PGDL2_(model_atk, eps=eps2, transf=fft_transf))
         
     return atks_list
 
@@ -399,7 +401,7 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
 
     loss = nn.CrossEntropyLoss()
     iters_result = {}
-    atk_removed = random.randint(0,3)
+    atk_removed = -1 #random.randint(0,3)
     
     for i in range(n_models):
         model, optim = generate_model()
@@ -410,7 +412,7 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
             for atk in atks_model_test:
                 iters_result[atk.attack] = []
 
-        cost0=train_(model,train_loader,optim,loss,atks_model_test[0], num_epochs=num_epochs)
+        cost0=train_(model,train_loader,optim,loss,atks_model_test[0], num_epochs=10)
 
         if procedure == "RR":
             cost1 = round_robin(model,train_loader,optim,loss,atks_model, num_epochs=num_epochs)
@@ -457,6 +459,19 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
         elif procedure == "PGD_FFT":
             atk = PGD_(model, eps=eps, steps=20, transf=fft_transf, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+            
+        elif procedure == "PGDL2":
+            atk = PGDL2_(model, eps=eps, steps=20, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "PGDL2_DCT":
+            atk = PGDL2_(model, eps=eps, steps=20, transf=dct_transf, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "PGDL2_JPEG":
+            atk = PGDL2_(model, eps=eps, steps=20, transf=jpeg_transf, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "PGDL2_FFT":
+            atk = PGDL2_(model, eps=eps, steps=20, transf=fft_transf, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
         
         print(f"Finish training, starting testing. Iter: {i+1}/{n_models}.")
         acc = get_model_acc(model, test_loader, atks_model_test)
@@ -470,17 +485,18 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
             
     results = {}
     avg_all =[]
+    
     for (key, values) in iters_result.items():
         aux_array = np.array(values)
         mean = np.mean(aux_array)
         std = np.std(aux_array)
         avg_all.append(mean)
         results[key] = str(round(mean, 2))+"+"+str(round(std, 2))
+        
     avg_all = np.array(avg_all)
     mean_all = np.mean(avg_all)
     std_all = np.std(avg_all)
     results['AVG_ALL'] = str(round(mean_all, 2))+"+"+str(round(std_all, 2))
-    print("Avg of all attacks",sum(avg_all)/len(avg_all))
     
     return results
 
