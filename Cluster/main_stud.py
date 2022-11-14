@@ -91,8 +91,9 @@ id_transf = rt.Identity()
 fft_transf = rt.FFT()
 dct_transf = rt.DCT()
 jpeg_transf = rt.JPEG(block_size=8)
+log_transf = rt.LOG()
 
-list_transf = [id_transf, fft_transf, dct_transf, jpeg_transf]
+list_transf = [id_transf, fft_transf, dct_transf, jpeg_transf,log_transf]
 
 
 #Get model and optimizer
@@ -397,7 +398,7 @@ def generate_atks_test(model_atk, eps=0.3, eps2=2):
     return atks_list
 
 
-def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=True):
+def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3,eps2=2, r_start=True):
 
     loss = nn.CrossEntropyLoss()
     iters_result = {}
@@ -433,6 +434,9 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
         elif procedure == "FGSM_FFT":
             atk = FGSM_(model, eps=eps, transf=fft_transf)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "FGSM_LOG":
+            atk = FGSM_(model, eps=eps, transf=log_transf)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
             
         elif procedure == "FFGSM":
             atk = FFGSM_(model, eps=eps)
@@ -446,6 +450,10 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
         elif procedure == "FFGSM_FFT":
             atk = FFGSM_(model, eps=eps, transf=fft_transf)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "FFGSM_LOG":
+            atk = FFGSM_(model, eps=eps, transf=log_transf)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        
             
         elif procedure == "PGD":
             atk = PGD_(model, eps=eps, steps=20, random_start=r_start)
@@ -459,19 +467,27 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3, r_start=T
         elif procedure == "PGD_FFT":
             atk = PGD_(model, eps=eps, steps=20, transf=fft_transf, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "PGD_LOG":
+            atk = PGD_(model, eps=eps, steps=20, transf=log_transf, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
             
         elif procedure == "PGDL2":
-            atk = PGDL2_(model, eps=eps, steps=20, random_start=r_start)
+            atk = PGDL2_(model, eps=eps2, steps=20, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
         elif procedure == "PGDL2_DCT":
-            atk = PGDL2_(model, eps=eps, steps=20, transf=dct_transf, random_start=r_start)
+            atk = PGDL2_(model, eps=eps2, steps=20, transf=dct_transf, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
         elif procedure == "PGDL2_JPEG":
-            atk = PGDL2_(model, eps=eps, steps=20, transf=jpeg_transf, random_start=r_start)
+            atk = PGDL2_(model, eps=eps2, steps=20, transf=jpeg_transf, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
         elif procedure == "PGDL2_FFT":
-            atk = PGDL2_(model, eps=eps, steps=20, transf=fft_transf, random_start=r_start)
+            atk = PGDL2_(model, eps=eps2, steps=20, transf=fft_transf, random_start=r_start)
             cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+        elif procedure == "PGDL2_LOG":
+            atk = PGDL2_(model, eps=eps2, steps=20, transf=log_transf, random_start=r_start)
+            cost1=train_(model,train_loader,optim,loss,atk, num_epochs=num_epochs)
+
+        
         
         print(f"Finish training, starting testing. Iter: {i+1}/{n_models}.")
         acc = get_model_acc(model, test_loader, atks_model_test)
