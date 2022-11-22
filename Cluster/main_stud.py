@@ -326,7 +326,7 @@ def get_model_acc(model, test_loader, atks_list):
 
 #Define attacks_list generation
 
-def generate_atks(model_atk, eps=0.3, eps2=2, avoid_attack=-1):
+def generate_atks(model_atk, eps=0.06, eps2=0.1, avoid_attack=-1):
     
     atks_list = []
     atks_list.append(NO_ATTACK(model_atk))
@@ -369,7 +369,7 @@ def generate_atks(model_atk, eps=0.3, eps2=2, avoid_attack=-1):
 
 #Define attacks_list generation
 
-def generate_atks_test(model_atk, eps=0.3, eps2=2):
+def generate_atks_test(model_atk, eps=0.06, eps2=0.1):
     
     atks_list = []
     atks_list.append(NO_ATTACK(model_atk))
@@ -398,7 +398,7 @@ def generate_atks_test(model_atk, eps=0.3, eps2=2):
     return atks_list
 
 
-def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3,eps2=2, r_start=True):
+def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.06, eps2=0.1, r_start=True):
 
     loss = nn.CrossEntropyLoss()
     iters_result = {}
@@ -406,7 +406,7 @@ def get_model_avg(n_models=1, procedure="None", num_epochs=5, eps=0.3,eps2=2, r_
     
     for i in range(n_models):
         model, optim = generate_model()
-        atks_model = generate_atks(model, eps=eps,avoid_attack=atk_removed)
+        atks_model = generate_atks(model, eps=eps, avoid_attack=atk_removed)
         atks_model_test = generate_atks_test(model, eps=eps)
         
         if iters_result == {}:
