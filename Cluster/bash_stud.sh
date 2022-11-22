@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=adv_stud
-#SBATCH --output=adv_stud%j.log
-#SBATCH --error=adv_stud%j.err
+#SBATCH --output=results/log/adv_stud%j.log
+#SBATCH --error=results/err/adv_stud%j.err
 #SBATCH --mail-user=coello@uni-hildesheim.de
 #SBATCH --partition=STUD
 #SBATCH --gres=gpu:1
