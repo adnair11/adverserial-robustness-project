@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=dynamic_attacks
+#SBATCH --job-name=dynamic
 #SBATCH --output=results/log/dynamic%j.log
 #SBATCH --error=results/err/dynamic%j.err
 #SBATCH --mail-user=coello@uni-hildesheim.de
